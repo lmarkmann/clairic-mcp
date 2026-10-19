@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: pnpm
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          cache: true
+          require-lockfile: true
+      - name: tools
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: zizmor
+          fallback: none
+      - name: format
+        run: pnpm exec oxfmt --check
+      - name: lint
+        run: pnpm exec oxlint --format github
+      - name: types
+        run: pnpm exec tsc --noEmit
+      - name: test
+        run: pnpm exec vitest run
+      - name: workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zizmor --format=github .
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12

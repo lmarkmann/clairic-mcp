@@ -54,13 +54,15 @@ access:
     mv .env.next .env
 
 # Check, test and deploy the Worker to CLAIRIC_DOMAIN behind the Access application
-deploy:
+ci:
+    pnpm exec oxfmt --check .
+    pnpm exec oxlint
+    pnpm exec tsc --noEmit -p .
+    pnpm exec vitest run
+
+deploy: ci
     #!/usr/bin/env bash
     set -euo pipefail
     : "${CLAIRIC_DOMAIN:?set it in .env}" "${ACCESS_TEAM_DOMAIN:?set it in .env}" "${ACCESS_AUD:?run just access first}"
-    pnpm exec tsc --noEmit -p .
-    pnpm exec oxlint
-    pnpm exec oxfmt --check .
-    pnpm exec vitest run
     pnpm exec wrangler deploy --domain "$CLAIRIC_DOMAIN" \
         --var "ACCESS_TEAM_DOMAIN:$ACCESS_TEAM_DOMAIN" --var "ACCESS_AUD:$ACCESS_AUD"
