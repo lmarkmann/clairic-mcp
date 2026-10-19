@@ -1,0 +1,13 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["unicorn", "oxc", "typescript", "vitest", "import", "promise"],
+	"options": { "typeAware": true, "reportUnusedDisableDirectives": "warn" },
+	"categories": { "correctness": "error", "suspicious": "error", "perf": "warn" },
+	"rules": {
+		"eqeqeq": "error",
+		"unicorn/filename-case": ["error", { "case": "kebabCase" }],
+		"id-denylist": ["error", "data", "result", "temp", "info", "tmp", "val"],
+		"no-await-in-loop": "off"
+	},
+	"ignorePatterns": ["worker-configuration.d.ts"]
+}

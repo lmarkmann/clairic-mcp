@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "es2024",
+		"lib": ["ES2024"],
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"types": [],
+		"resolveJsonModule": true,
+		"verbatimModuleSyntax": true,
+		"moduleDetection": "force",
+		"erasableSyntaxOnly": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true
+	},
+	"include": ["src", "test", "worker-configuration.d.ts"]
+}
