@@ -21,7 +21,7 @@ test("reduces HTML to text with one block per line", () => {
 	const html = `<html><head><title>x</title><style>p{}</style></head><body>
 		<h1>Order&nbsp;A-88412</h1><script>track()</script>
 		<p>Total: &pound;649 + &#163;52.10 &amp; VAT</p><!-- hidden --><ul><li>one</li><li>two</li></ul></body></html>`;
-	expect(htmlToText(html)).toBe("Order A-88412\nTotal: £649 + £52.10 & VAT\none\ntwo");
+	expect(htmlToText(html)).toBe("x\nOrder A-88412\nTotal: £649 + £52.10 & VAT\none\ntwo");
 });
 
 test("passes plain text and JSON through", async () => {

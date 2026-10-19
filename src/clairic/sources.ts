@@ -34,10 +34,10 @@ function decodeEntities(text: string): string {
 export function htmlToText(html: string): string {
 	return decodeEntities(
 		html
-			.replace(/<(script|style|noscript|template|svg|head)\b[\s\S]*?<\/\1\s*>/gi, " ")
+			.replace(/<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1\s*>/gi, " ")
 			.replace(/<!--[\s\S]*?-->/g, " ")
 			.replace(
-				/<(br|hr)\b[^>]*>|<\/(p|div|li|tr|h[1-6]|table|section|article|header|footer)\s*>/gi,
+				/<(br|hr)\b[^>]*>|<\/(title|p|div|li|tr|h[1-6]|table|section|article|header|footer)\s*>/gi,
 				"\n",
 			)
 			.replace(/<[^>]+>/g, " "),
