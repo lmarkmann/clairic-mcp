@@ -3,7 +3,7 @@ import type { FieldSpec } from "../src/clairic/fields";
 
 import { expect, test } from "vitest";
 
-import { lineOf, probability, renderAnswers } from "../src/clairic/render";
+import { lineFinder, probability, renderAnswers } from "../src/clairic/render";
 import forecast from "./fixtures/clairic/forecast.json";
 import invoice from "./fixtures/clairic/invoice.json";
 import { invoiceFields, invoiceState } from "./support/invoice";
@@ -71,9 +71,26 @@ test("flags estimates clipped by their bounds and truncated input", () => {
 	expect(text).toContain("read only the start");
 });
 
+test("keeps small estimates readable and marks an unsure empty list", () => {
+	const response: ClairicResponse = {
+		answers: {
+			rate: { type: "estimate", value: 0.00034, median: 0.00031, p10: 0.000125, p90: 0.0009 },
+			damage: { type: "list", value: [], confidence: 0.4 },
+		},
+		truncated: false,
+		usage: { input_tokens: 10 },
+	};
+	const lines = render(response, {}, "").split("\n");
+	expect(lines[0]).toBe("rate: 0.00034 (median 0.00031, 80% interval 0.000125 to 0.0009)");
+	expect(lines[1]).toBe("damage: none found (confidence 0.400) [check]");
+});
+
 test("line numbers count newlines before the offset", () => {
-	expect(lineOf("a\nb\nc", 0)).toBe(1);
-	expect(lineOf("a\nb\nc", 2)).toBe(2);
-	expect(lineOf("a\nb\nc", 4)).toBe(3);
+	const lineAt = lineFinder("a\nb\nc");
+	expect(lineAt(0)).toBe(1);
+	expect(lineAt(1)).toBe(1);
+	expect(lineAt(2)).toBe(2);
+	expect(lineAt(4)).toBe(3);
+	expect(lineAt(99)).toBe(3);
 	expect(probability(0.5)).toBe("0.500");
 });

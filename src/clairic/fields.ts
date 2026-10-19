@@ -16,19 +16,20 @@ const nullThreshold = z
 const unit = z.string().optional().describe("Unit label, e.g. 'USD' or 'kWh'.");
 const integer = z.boolean().optional();
 const decimals = z.number().int().min(0).max(6).optional();
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const isoDate = z.iso.date();
 const bound = z.union([z.number(), isoDate]);
 const scale = z.enum(["linear", "log"]).optional();
 
+// Strict objects, so a misspelled option fails validation instead of being dropped unseen.
 const simple = (type: "text" | "date" | "time" | "datetime", description: string) =>
 	z
-		.object({ type: z.literal(type), instructions, null_threshold: nullThreshold })
+		.strictObject({ type: z.literal(type), instructions, null_threshold: nullThreshold })
 		.describe(description);
 
 export const fieldSpec = z.discriminatedUnion("type", [
 	simple("text", "An exact span copied from the input, with its line number."),
 	z
-		.object({
+		.strictObject({
 			type: z.literal("number"),
 			instructions,
 			unit,
@@ -41,7 +42,7 @@ export const fieldSpec = z.discriminatedUnion("type", [
 	simple("time", "A time of day, ISO form."),
 	simple("datetime", "A date and time, ISO form."),
 	z
-		.object({
+		.strictObject({
 			type: z.literal("duration"),
 			instructions,
 			unit: z
@@ -54,7 +55,7 @@ export const fieldSpec = z.discriminatedUnion("type", [
 		})
 		.describe("A length of time, e.g. days between two dates in the input."),
 	z
-		.object({
+		.strictObject({
 			type: z.literal("list"),
 			instructions,
 			items: z.enum(["text", "number", "date"]),
@@ -63,7 +64,7 @@ export const fieldSpec = z.discriminatedUnion("type", [
 		})
 		.describe("Every matching value, in input order. Empty when nothing matches."),
 	z
-		.object({
+		.strictObject({
 			type: z.literal("estimate"),
 			instructions,
 			min: bound.describe("Lowest allowed value: a number, or an ISO date for date estimates."),
@@ -81,7 +82,7 @@ export const fieldSpec = z.discriminatedUnion("type", [
 			"A value the input does not state but gives evidence for (comparables, history, description). Returns a median and an 80% interval; without evidence the interval is wide.",
 		),
 	z
-		.object({
+		.strictObject({
 			type: z.literal("forecast"),
 			instructions,
 			min: bound,

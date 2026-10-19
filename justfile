@@ -27,6 +27,8 @@ access:
     }')
     policy=$(post policies "$policy_body" | jq -r .result.id)
     echo "Created Access policy $policy" >&2
+    # A policy left without its application would be duplicated by the next run, since ACCESS_AUD stays empty.
+    trap 'echo "Deleting Access policy $policy" >&2; curl -sS -o /dev/null -X DELETE "$api/policies/$policy" -H "Authorization: Bearer $ACCESS_API_TOKEN"' ERR
     app_body=$(jq -cn --arg domain "$CLAIRIC_DOMAIN" --arg policy "$policy" --arg idp "${ACCESS_IDP_ID:-}" '{
         name: "clairic-mcp",
         type: "self_hosted",
@@ -46,6 +48,7 @@ access:
         }
     } + (if $idp == "" then {} else {allowed_idps: [$idp], auto_redirect_to_identity: true} end)')
     app=$(post apps "$app_body")
+    trap - ERR
     echo "Created Access application $(jq -r .result.id <<< "$app") on $CLAIRIC_DOMAIN" >&2
     { grep -v '^ACCESS_AUD=' .env || true; echo "ACCESS_AUD=$(jq -r .result.aud <<< "$app")"; } > .env.next
     mv .env.next .env

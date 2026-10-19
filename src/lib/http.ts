@@ -23,7 +23,7 @@ const attemptTimeoutMs = 20_000;
 // Total time one call may spend retrying; a tool call should answer, even with an error, within it.
 const budgetMs = 30_000;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Full jitter: a random wait up to an exponentially growing cap.
 export const backoffMs = (attempt: number) => Math.random() * Math.min(8_000, 500 * 2 ** attempt);
@@ -36,13 +36,16 @@ export function serverWaitMs(headers: Headers, now: number): number | undefined 
 		const date = Date.parse(retryAfter);
 		if (!Number.isNaN(date)) return Math.max(0, date - now);
 	}
+	// Hosts send the reset either as epoch seconds (past 1e9 since 2001) or as seconds from now.
 	const reset = Number(headers.get("x-ratelimit-reset"));
-	return reset ? Math.max(0, reset * 1000 - now) : undefined;
+	if (!reset) return undefined;
+	return Math.max(0, reset > 1e9 ? reset * 1000 - now : reset * 1000);
 }
 
 // Reads at most maxBytes, so a huge file cannot exhaust the isolate's memory; undefined when larger.
 export async function readCapped(
 	response: Response,
+	url: string,
 	maxBytes: number,
 ): Promise<Uint8Array | undefined> {
 	if (Number(response.headers.get("content-length")) > maxBytes) {
@@ -53,13 +56,18 @@ export async function readCapped(
 	if (!reader) return new Uint8Array();
 	const chunks: Uint8Array[] = [];
 	let total = 0;
-	for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
-		total += chunk.value.length;
-		if (total > maxBytes) {
-			await reader.cancel();
-			return undefined;
+	try {
+		for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+			total += chunk.value.length;
+			if (total > maxBytes) {
+				await reader.cancel();
+				return undefined;
+			}
+			chunks.push(chunk.value);
 		}
-		chunks.push(chunk.value);
+	} catch {
+		// The body broke off, or outlasted the attempt's timeout, after the headers arrived.
+		throw new UpstreamError(0, url, 1);
 	}
 	const bytes = new Uint8Array(total);
 	let offset = 0;

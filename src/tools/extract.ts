@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod";
 
 import { type ClairicImage, runClairic } from "../clairic/client";
-import { fieldSpecs } from "../clairic/fields";
+import { fieldSpecs, isoDate } from "../clairic/fields";
 import { renderAnswers } from "../clairic/render";
 import { loadImage, loadText, maxImagesBytes } from "../clairic/sources";
 import { runTool, ToolInputError } from "../lib/result";
@@ -38,9 +38,7 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 						"Up to 4 public PNG, JPEG or WebP images (4 MiB each, 8 MiB together), read before the text, e.g. a photo of a receipt.",
 					),
 				fields: fieldSpecs,
-				reference_date: z
-					.string()
-					.regex(/^\d{4}-\d{2}-\d{2}$/)
+				reference_date: isoDate
 					.optional()
 					.describe(
 						"ISO date for 'today' and for dates written without a year. Defaults to the current UTC date.",
@@ -79,7 +77,8 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 					);
 				}
 				const images: ClairicImage[] = loaded.map(({ image }) => image);
-				const state = (page ?? text ?? "").slice(offset, offset + maxStateCharacters);
+				const input = page ?? text ?? "";
+				const state = input.slice(offset, offset + maxStateCharacters);
 				if (url && !state) throw new ToolInputError(`${url} has no text at offset ${offset}.`);
 				const referenceDate = reference_date ?? new Date().toISOString().slice(0, 10);
 
@@ -91,9 +90,14 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 					...(include_quantiles && { options: { include_quantiles } }),
 				});
 				const source = url
-					? `Read ${url}${offset ? ` from character ${offset}` : ""} (${state.length} characters).\n\n`
+					? `Read ${url}${offset ? ` from character ${offset}` : ""} (${state.length} of ${input.length} characters).\n\n`
 					: "";
-				return source + renderAnswers(response, { state, fields, referenceDate });
+				const end = offset + state.length;
+				const cut =
+					!response.truncated && end < input.length
+						? `\nOnly characters ${offset} to ${end} of ${input.length} were sent. ${url ? `Call again with offset ${end} for the rest.` : "Send the rest of the text in another call."}`
+						: "";
+				return source + renderAnswers(response, { state, fields, referenceDate }) + cut;
 			}),
 	);
 }

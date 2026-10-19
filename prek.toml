@@ -20,8 +20,8 @@ hooks = [
 [[repos]]
 repo = "local"
 hooks = [
-	{ id = "oxfmt", name = "oxfmt", entry = "pnpm exec oxfmt --no-error-on-unmatched-pattern", language = "system", priority = "format", types_or = ["ts", "json"] },
+	{ id = "oxfmt", name = "oxfmt", entry = "pnpm exec oxfmt --no-error-on-unmatched-pattern", language = "system", priority = "format", types_or = ["ts", "json", "jsonc", "yaml"] },
 	{ id = "oxlint", name = "oxlint", entry = "pnpm exec oxlint", language = "system", pass_filenames = false, priority = "lint", types_or = ["ts"] },
 	{ id = "tsc", name = "tsc", entry = "pnpm exec tsc --noEmit -p .", language = "system", pass_filenames = false, priority = "types", types_or = ["ts"] },
-	{ id = "vitest", name = "vitest", entry = "pnpm exec vitest run", language = "system", pass_filenames = false, priority = "tests", types_or = ["ts", "xml", "json"] },
+	{ id = "vitest", name = "vitest", entry = "pnpm exec vitest run", language = "system", pass_filenames = false, priority = "tests", types_or = ["ts", "json", "plain-text"] },
 ]

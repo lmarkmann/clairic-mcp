@@ -1,0 +1,1 @@
+3030: AiError: AiError: estimate price needs finite min < max, got 100 and 1 (47e32150-2566-420b-bbd1-129ae7b2b02a)

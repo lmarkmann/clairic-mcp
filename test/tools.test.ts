@@ -2,7 +2,7 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { createServer } from "../src/server";
-import rejection from "./fixtures/clairic/invalid-estimate.txt?raw";
+import rejection from "./fixtures/clairic/inverted-bounds.txt?raw";
 import invoice from "./fixtures/clairic/invoice.json";
 import { stubAiRun } from "./support/cloudflare-workers";
 import { invoiceFields, invoiceState } from "./support/invoice";
@@ -73,7 +73,13 @@ test("reads a page as text with its block structure", async () => {
 	const { text } = await callTool({ url: "https://example.com/invoice", fields: invoiceFields });
 	expect(sent[0]?.state).toBe(invoiceState);
 	expect(sent[0]?.reference_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-	expect(text).toMatch(/^Read https:\/\/example\.com\/invoice \(\d+ characters\)/);
+	expect(text).toMatch(/^Read https:\/\/example\.com\/invoice \(\d+ of \d+ characters\)/);
+});
+
+test("says when the input was cut before Clairic saw it", async () => {
+	const { text } = await callTool({ text: "x".repeat(400_005), fields: invoiceFields });
+	expect(sent[0]?.state).toHaveLength(400_000);
+	expect(text).toContain("Only characters 0 to 400000 of 400005 were sent.");
 });
 
 test("embeds image URLs as base64 because Clairic refuses remote URLs", async () => {
@@ -103,11 +109,11 @@ test("passes Clairic's own reason through when it rejects the fields", async () 
 	});
 	const { isError, text } = await callTool({
 		text: "x",
-		fields: { price: { type: "estimate", min: 0, max: 1 } },
+		fields: { price: { type: "estimate", min: 100, max: 1 } },
 	});
 	expect(isError).toBe(true);
 	expect(text).toBe(
-		"Clairic rejected the request: estimate price needs numeric min and max. Fix the field specs and call again.",
+		"Clairic rejected the request: estimate price needs finite min < max, got 100 and 1. Fix what it names and call again.",
 	);
 	expect(calls).toBe(1);
 });

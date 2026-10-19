@@ -32,7 +32,7 @@ export function describeUpstreamError(error: UpstreamError): string {
 
 export function describeClairicError(error: ClairicError): string {
 	if (error.rejected) {
-		return `Clairic rejected the request: ${error.message}. Fix the field specs and call again.`;
+		return `Clairic rejected the request: ${error.message}. Fix what it names and call again.`;
 	}
 	return `Clairic failed: ${error.message}. Tell the user and offer to try again later.`;
 }

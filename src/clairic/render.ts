@@ -10,12 +10,28 @@ export function probability(p: number): string {
 	return p.toFixed(3);
 }
 
-export const lineOf = (state: string, offset: number) => state.slice(0, offset).split("\n").length;
+// Newline offsets are found once, so a long list of spans does not rescan the state per item.
+export function lineFinder(state: string): (offset: number) => number {
+	const breaks = Array.from(state.matchAll(/\n/g), (match) => match.index);
+	return (offset) => {
+		let low = 0;
+		let high = breaks.length;
+		while (low < high) {
+			const middle = (low + high) >>> 1;
+			if (breaks[middle]! < offset) low = middle + 1;
+			else high = middle;
+		}
+		return low + 1;
+	};
+}
 
 const show = (value: unknown) =>
 	typeof value === "string" ? JSON.stringify(value) : String(value);
-const round = (value: unknown) =>
-	typeof value === "number" ? String(Number(value.toFixed(2))) : String(value);
+// Below 1, three significant digits instead of two decimals, so small estimates do not print as 0.
+const round = (value: unknown) => {
+	if (typeof value !== "number") return String(value);
+	return String(Number(Math.abs(value) < 1 ? value.toPrecision(3) : value.toFixed(2)));
+};
 
 function needsCheck(answer: ClairicAnswer): boolean {
 	const unsureNull =
@@ -48,13 +64,13 @@ function renderAnswer(
 	name: string,
 	answer: ClairicAnswer,
 	spec: FieldSpec | undefined,
-	state: string,
+	lineAt: ((offset: number) => number) | undefined,
 ): string[] {
 	const label = answer.unit ?? (spec && "unit" in spec ? spec.unit : undefined);
 	const unit = label ? ` ${label}` : "";
 	const check = needsCheck(answer) ? " [check]" : "";
 	const line = (offset: number | undefined) =>
-		offset !== undefined && state ? `line ${lineOf(state, offset)}` : undefined;
+		offset !== undefined && lineAt ? `line ${lineAt(offset)}` : undefined;
 
 	if (answer.type === "forecast" && answer.steps) {
 		return [
@@ -66,9 +82,9 @@ function renderAnswer(
 		return [`${name}: ${distribution(answer, unit)}`];
 	}
 	if (Array.isArray(answer.value)) {
-		if (!answer.value.length) return [`${name}: none found`];
 		const confidence =
 			answer.confidence === undefined ? "" : ` (confidence ${probability(answer.confidence)})`;
+		if (!answer.value.length) return [`${name}: none found${confidence}${check}`];
 		return [
 			`${name}: ${answer.value.length} item${answer.value.length === 1 ? "" : "s"}${confidence}${check}`,
 			...answer.value.map((item, index) => {
@@ -97,8 +113,9 @@ export function renderAnswers(
 	context: { state: string; fields: Record<string, FieldSpec>; referenceDate: string },
 ): string {
 	const answers = Object.entries(response.answers);
+	const lineAt = context.state ? lineFinder(context.state) : undefined;
 	const lines = answers.flatMap(([name, answer]) =>
-		renderAnswer(name, answer, context.fields[name], context.state),
+		renderAnswer(name, answer, context.fields[name], lineAt),
 	);
 	const { input_tokens, passes = 1 } = response.usage;
 	lines.push(

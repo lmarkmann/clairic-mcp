@@ -2,7 +2,7 @@ import type { FieldSpec } from "./fields";
 
 import { env } from "cloudflare:workers";
 
-import { backoffMs } from "../lib/http";
+import { backoffMs, sleep } from "../lib/http";
 
 export interface ClairicImage {
 	content_type: string;
@@ -87,7 +87,7 @@ export async function runClairic(request: ClairicRequest): Promise<ClairicRespon
 		} catch (error) {
 			const failure = toClairicError(error);
 			if (failure.rejected || attempt === 2) throw failure;
-			await new Promise((resolve) => setTimeout(resolve, backoffMs(attempt)));
+			await sleep(backoffMs(attempt));
 			continue;
 		}
 		if (isClairicResponse(response)) return response;

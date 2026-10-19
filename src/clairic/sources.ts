@@ -8,25 +8,46 @@ export const maxImagesBytes = 8 * 1024 * 1024;
 // Pages carry markup on top of the 400,000 characters Clairic is sent; anything larger is refused unread.
 export const maxTextBytes = 8 * 1024 * 1024;
 
-const entities: Record<string, string> = {
-	amp: "&",
-	lt: "<",
-	gt: ">",
-	quot: '"',
-	apos: "'",
-	nbsp: " ",
-	pound: "£",
-	euro: "€",
-	cent: "¢",
-	yen: "¥",
+// Code points rather than characters, so the source stays ASCII; nbsp and thinsp become plain spaces.
+const entityCodes: Record<string, number> = {
+	amp: 0x26,
+	lt: 0x3c,
+	gt: 0x3e,
+	quot: 0x22,
+	apos: 0x27,
+	nbsp: 0x20,
+	thinsp: 0x20,
+	pound: 0xa3,
+	euro: 0x20ac,
+	cent: 0xa2,
+	yen: 0xa5,
+	lsquo: 0x2018,
+	rsquo: 0x2019,
+	ldquo: 0x201c,
+	rdquo: 0x201d,
+	laquo: 0xab,
+	raquo: 0xbb,
+	ndash: 0x2013,
+	mdash: 0x2014,
+	hellip: 0x2026,
+	bull: 0x2022,
+	middot: 0xb7,
+	copy: 0xa9,
+	reg: 0xae,
+	trade: 0x2122,
+	deg: 0xb0,
+	times: 0xd7,
 };
 
 function decodeEntities(text: string): string {
 	return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
-		if (name[0] !== "#") return entities[name.toLowerCase()] ?? match;
 		const code =
-			name[1] === "x" || name[1] === "X" ? parseInt(name.slice(2), 16) : Number(name.slice(1));
-		return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+			name[0] !== "#"
+				? entityCodes[name.toLowerCase()]
+				: name[1] === "x" || name[1] === "X"
+					? parseInt(name.slice(2), 16)
+					: Number(name.slice(1));
+		return code && code <= 0x10ffff ? String.fromCodePoint(code) : match;
 	});
 }
 
@@ -50,25 +71,33 @@ export function htmlToText(html: string): string {
 
 const textTypes = /^(text\/|application\/(json|xml|[\w.+-]+\+(json|xml))$)/;
 
+// Pages that are not UTF-8 name their charset in the header; a label the runtime lacks falls back to UTF-8.
+function decoderFor(contentTypeHeader: string): TextDecoder {
+	const charset = /;\s*charset\s*=\s*"?([^";\s]+)/i.exec(contentTypeHeader)?.[1];
+	try {
+		return new TextDecoder(charset);
+	} catch {
+		return new TextDecoder();
+	}
+}
+
 export async function loadText(url: string): Promise<string> {
 	const response = await fetchSource(url);
-	const contentType = (response.headers.get("content-type") ?? "")
-		.split(";")[0]!
-		.trim()
-		.toLowerCase();
+	const header = response.headers.get("content-type") ?? "";
+	const contentType = header.split(";")[0]!.trim().toLowerCase();
 	const html = contentType === "text/html" || contentType === "application/xhtml+xml";
 	if (html || textTypes.test(contentType) || contentType === "") {
-		const bytes = await readCapped(response, maxTextBytes);
+		const bytes = await readCapped(response, url, maxTextBytes);
 		if (!bytes) {
 			throw new ToolInputError(
 				`${url} is larger than ${maxTextBytes / 2 ** 20} MiB. Ask the user for the relevant part as text.`,
 			);
 		}
-		const text = new TextDecoder().decode(bytes);
+		const text = decoderFor(header).decode(bytes);
 		return html ? htmlToText(text) : text;
 	}
 	await response.body?.cancel();
-	if (contentType.startsWith("image/")) {
+	if (/^image\/(png|jpeg|webp)$/.test(contentType)) {
 		throw new ToolInputError(`${url} is an image; pass it in image_urls instead of url.`);
 	}
 	if (contentType === "application/pdf") {
@@ -99,7 +128,7 @@ function base64(bytes: Uint8Array): string {
 }
 
 export async function loadImage(url: string): Promise<{ image: ClairicImage; bytes: number }> {
-	const bytes = await readCapped(await fetchSource(url), maxImageBytes);
+	const bytes = await readCapped(await fetchSource(url), url, maxImageBytes);
 	if (!bytes) throw new ToolInputError(`${url} is larger than 4 MiB, Clairic's limit per image.`);
 	const contentType = imageType(bytes);
 	if (!contentType) throw new ToolInputError(`${url} is not a PNG, JPEG or WebP image.`);
