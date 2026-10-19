@@ -8,7 +8,9 @@ export function stubAiRun(next: Run) {
 }
 
 export const env = {
-	AI: { run: (model: string, inputs: Record<string, unknown>) => run(model, inputs) },
+	AI: {
+		run: (model: string, inputs: Record<string, unknown>) => run(model, inputs),
+	},
 	ACCESS_TEAM_DOMAIN: "",
 	ACCESS_AUD: "",
 };

@@ -8,8 +8,11 @@ import forecast from "./fixtures/clairic/forecast.json";
 import invoice from "./fixtures/clairic/invoice.json";
 import { invoiceFields, invoiceState } from "./support/invoice";
 
-const render = (response: ClairicResponse, fields = invoiceFields, state = invoiceState) =>
-	renderAnswers(response, { state, fields, referenceDate: "2026-10-19" });
+const render = (
+	response: ClairicResponse,
+	fields = invoiceFields,
+	state = invoiceState,
+) => renderAnswers(response, { state, fields, referenceDate: "2026-10-19" });
 
 test("renders every answer type of the recorded invoice", () => {
 	expect(render(invoice).split("\n")).toEqual([
@@ -29,7 +32,14 @@ test("renders every answer type of the recorded invoice", () => {
 
 test("renders a forecast one step per line", () => {
 	const fields: Record<string, FieldSpec> = {
-		next_months: { type: "forecast", min: 0, max: 600, horizon: 3, interval: "month", unit: "kWh" },
+		next_months: {
+			type: "forecast",
+			min: 0,
+			max: 600,
+			horizon: 3,
+			interval: "month",
+			unit: "kWh",
+		},
 	};
 	expect(render(forecast, fields, "").split("\n").slice(0, 4)).toEqual([
 		"next_months: 3 steps ahead",
@@ -43,7 +53,13 @@ test("marks weak and unsure answers for review and explains the mark", () => {
 	const response: ClairicResponse = {
 		answers: {
 			weak: { type: "number", value: 12, confidence: 0.6, p_null: 0.01 },
-			unsure_null: { type: "text", value: null, p_null: 0.7, guess: "x", confidence: 0.5 },
+			unsure_null: {
+				type: "text",
+				value: null,
+				p_null: 0.7,
+				guess: "x",
+				confidence: 0.5,
+			},
 			sure_null: { type: "text", value: null, p_null: 0.98 },
 		},
 		truncated: false,
@@ -61,7 +77,14 @@ test("marks weak and unsure answers for review and explains the mark", () => {
 test("flags estimates clipped by their bounds and truncated input", () => {
 	const response: ClairicResponse = {
 		answers: {
-			price: { type: "estimate", value: 100, median: 100, p10: 90, p90: 100, p_above: 0.3 },
+			price: {
+				type: "estimate",
+				value: 100,
+				median: 100,
+				p10: 90,
+				p90: 100,
+				p_above: 0.3,
+			},
 		},
 		truncated: true,
 		usage: { input_tokens: 65_536 },
@@ -74,14 +97,22 @@ test("flags estimates clipped by their bounds and truncated input", () => {
 test("keeps small estimates readable and marks an unsure empty list", () => {
 	const response: ClairicResponse = {
 		answers: {
-			rate: { type: "estimate", value: 0.00034, median: 0.00031, p10: 0.000125, p90: 0.0009 },
+			rate: {
+				type: "estimate",
+				value: 0.00034,
+				median: 0.00031,
+				p10: 0.000125,
+				p90: 0.0009,
+			},
 			damage: { type: "list", value: [], confidence: 0.4 },
 		},
 		truncated: false,
 		usage: { input_tokens: 10 },
 	};
 	const lines = render(response, {}, "").split("\n");
-	expect(lines[0]).toBe("rate: 0.00034 (median 0.00031, 80% interval 0.000125 to 0.0009)");
+	expect(lines[0]).toBe(
+		"rate: 0.00034 (median 0.00031, 80% interval 0.000125 to 0.0009)",
+	);
 	expect(lines[1]).toBe("damage: none found (confidence 0.400) [check]");
 });
 

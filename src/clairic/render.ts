@@ -2,7 +2,11 @@ import type { ClairicAnswer, ClairicResponse, Distribution } from "./client";
 import type { FieldSpec } from "./fields";
 
 // A convention, not derived: answers outside these bounds are marked for the user to verify.
-export const review = { minConfidence: 0.9, unsureNullLow: 0.1, unsureNullHigh: 0.9 } as const;
+export const review = {
+	minConfidence: 0.9,
+	unsureNullLow: 0.1,
+	unsureNullHigh: 0.9,
+} as const;
 
 export function probability(p: number): string {
 	if (p < 0.001) return "<0.001";
@@ -30,7 +34,9 @@ const show = (value: unknown) =>
 // Below 1, three significant digits instead of two decimals, so small estimates do not print as 0.
 const round = (value: unknown) => {
 	if (typeof value !== "number") return String(value);
-	return String(Number(Math.abs(value) < 1 ? value.toPrecision(3) : value.toFixed(2)));
+	return String(
+		Number(Math.abs(value) < 1 ? value.toPrecision(3) : value.toFixed(2)),
+	);
 };
 
 function needsCheck(answer: ClairicAnswer): boolean {
@@ -56,7 +62,9 @@ function distribution(estimate: Distribution, unit: string): string {
 	if ((estimate.p_above ?? 0) > 0.05)
 		parts.push(`p_above ${probability(estimate.p_above!)}: raise max`);
 	if (estimate.quantiles)
-		parts.push(`percentiles 1 to 99: ${estimate.quantiles.map(round).join(", ")}`);
+		parts.push(
+			`percentiles 1 to 99: ${estimate.quantiles.map(round).join(", ")}`,
+		);
 	return `${round(estimate.value)}${unit} (${parts.join(", ")})`;
 }
 
@@ -75,7 +83,9 @@ function renderAnswer(
 	if (answer.type === "forecast" && answer.steps) {
 		return [
 			`${name}: ${answer.steps.length} steps ahead`,
-			...answer.steps.map((step, index) => `  ${index + 1}: ${distribution(step, unit)}`),
+			...answer.steps.map(
+				(step, index) => `  ${index + 1}: ${distribution(step, unit)}`,
+			),
 		];
 	}
 	if (answer.type === "estimate") {
@@ -83,8 +93,11 @@ function renderAnswer(
 	}
 	if (Array.isArray(answer.value)) {
 		const confidence =
-			answer.confidence === undefined ? "" : ` (confidence ${probability(answer.confidence)})`;
-		if (!answer.value.length) return [`${name}: none found${confidence}${check}`];
+			answer.confidence === undefined
+				? ""
+				: ` (confidence ${probability(answer.confidence)})`;
+		if (!answer.value.length)
+			return [`${name}: none found${confidence}${check}`];
 		return [
 			`${name}: ${answer.value.length} item${answer.value.length === 1 ? "" : "s"}${confidence}${check}`,
 			...answer.value.map((item, index) => {
@@ -97,20 +110,30 @@ function renderAnswer(
 		const parts = [`p_null ${probability(answer.p_null ?? 1)}`];
 		if (answer.guess !== undefined && answer.guess !== null) {
 			const confidence =
-				answer.confidence === undefined ? "" : ` at confidence ${probability(answer.confidence)}`;
+				answer.confidence === undefined
+					? ""
+					: ` at confidence ${probability(answer.confidence)}`;
 			parts.push(`best guess ${show(answer.guess)}${unit}${confidence}`);
 		}
 		return [`${name}: null (${parts.join("; ")})${check}`];
 	}
 	const parts = [line(answer.span?.[0])];
-	if (answer.confidence !== undefined) parts.push(`confidence ${probability(answer.confidence)}`);
-	if (answer.p_null !== undefined) parts.push(`p_null ${probability(answer.p_null)}`);
-	return [`${name}: ${show(answer.value)}${unit} (${parts.filter(Boolean).join(", ")})${check}`];
+	if (answer.confidence !== undefined)
+		parts.push(`confidence ${probability(answer.confidence)}`);
+	if (answer.p_null !== undefined)
+		parts.push(`p_null ${probability(answer.p_null)}`);
+	return [
+		`${name}: ${show(answer.value)}${unit} (${parts.filter(Boolean).join(", ")})${check}`,
+	];
 }
 
 export function renderAnswers(
 	response: ClairicResponse,
-	context: { state: string; fields: Record<string, FieldSpec>; referenceDate: string },
+	context: {
+		state: string;
+		fields: Record<string, FieldSpec>;
+		referenceDate: string;
+	},
 ): string {
 	const answers = Object.entries(response.answers);
 	const lineAt = context.state ? lineFinder(context.state) : undefined;

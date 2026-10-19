@@ -31,7 +31,9 @@ async function callTool(args: Record<string, unknown>): Promise<ToolResult> {
 		}),
 	);
 	const body = await response.text();
-	const json = body.startsWith("{") ? body : (/^data: (.*)$/m.exec(body)?.[1] ?? "");
+	const json = body.startsWith("{")
+		? body
+		: (/^data: (.*)$/m.exec(body)?.[1] ?? "");
 	const reply = JSON.parse(json).result;
 	return { isError: reply.isError, text: reply.content[0].text };
 }
@@ -81,7 +83,9 @@ test("reads a page as text with its block structure", async () => {
 	});
 	expect(sent[0]?.state).toBe(invoiceState);
 	expect(sent[0]?.reference_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-	expect(text).toMatch(/^Read https:\/\/example\.com\/invoice \(\d+ of \d+ characters\)/);
+	expect(text).toMatch(
+		/^Read https:\/\/example\.com\/invoice \(\d+ of \d+ characters\)/,
+	);
 });
 
 test("says when the input was cut before Clairic saw it", async () => {
@@ -109,7 +113,9 @@ test("refuses images over 8 MiB together before sending any", async () => {
 	large.set(png);
 	vi.stubGlobal("fetch", () => Promise.resolve(new Response(large)));
 	const { isError, text } = await callTool({
-		image_urls: ["a", "b", "c"].map((name) => `https://example.com/${name}.png`),
+		image_urls: ["a", "b", "c"].map(
+			(name) => `https://example.com/${name}.png`,
+		),
 		fields: invoiceFields,
 	});
 	expect(isError).toBe(true);

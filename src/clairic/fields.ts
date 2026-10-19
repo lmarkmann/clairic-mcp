@@ -21,9 +21,16 @@ const bound = z.union([z.number(), isoDate]);
 const scale = z.enum(["linear", "log"]).optional();
 
 // Strict objects, so a misspelled option fails validation instead of being dropped unseen.
-const simple = (type: "text" | "date" | "time" | "datetime", description: string) =>
+const simple = (
+	type: "text" | "date" | "time" | "datetime",
+	description: string,
+) =>
 	z
-		.strictObject({ type: z.literal(type), instructions, null_threshold: nullThreshold })
+		.strictObject({
+			type: z.literal(type),
+			instructions,
+			null_threshold: nullThreshold,
+		})
 		.describe(description);
 
 export const fieldSpec = z.discriminatedUnion("type", [
@@ -37,7 +44,9 @@ export const fieldSpec = z.discriminatedUnion("type", [
 			decimals,
 			null_threshold: nullThreshold,
 		})
-		.describe("A number read from the input or worked out from it in one or two steps."),
+		.describe(
+			"A number read from the input or worked out from it in one or two steps.",
+		),
 	simple("date", "A calendar date, ISO form."),
 	simple("time", "A time of day, ISO form."),
 	simple("datetime", "A date and time, ISO form."),
@@ -46,7 +55,15 @@ export const fieldSpec = z.discriminatedUnion("type", [
 			type: z.literal("duration"),
 			instructions,
 			unit: z
-				.enum(["seconds", "minutes", "hours", "days", "weeks", "months", "years"])
+				.enum([
+					"seconds",
+					"minutes",
+					"hours",
+					"days",
+					"weeks",
+					"months",
+					"years",
+				])
 				.optional()
 				.describe("Default seconds."),
 			integer,
@@ -62,13 +79,19 @@ export const fieldSpec = z.discriminatedUnion("type", [
 			unit,
 			decimals: decimals.describe("Number lists only."),
 		})
-		.describe("Every matching value, in input order. Empty when nothing matches."),
+		.describe(
+			"Every matching value, in input order. Empty when nothing matches.",
+		),
 	z
 		.strictObject({
 			type: z.literal("estimate"),
 			instructions,
-			min: bound.describe("Lowest allowed value: a number, or an ISO date for date estimates."),
-			max: bound.describe("Highest allowed value: a number, or an ISO date for date estimates."),
+			min: bound.describe(
+				"Lowest allowed value: a number, or an ISO date for date estimates.",
+			),
+			max: bound.describe(
+				"Highest allowed value: a number, or an ISO date for date estimates.",
+			),
 			step: z
 				.union([z.number().positive(), z.enum(["month", "year"])])
 				.optional()
@@ -87,9 +110,25 @@ export const fieldSpec = z.discriminatedUnion("type", [
 			instructions,
 			min: bound,
 			max: bound,
-			horizon: z.number().int().min(1).max(64).describe("Number of future steps."),
-			interval: z.enum(["step", "minute", "hour", "day", "week", "month", "quarter", "year"]),
-			step: z.union([z.number().positive(), z.enum(["month", "year"])]).optional(),
+			horizon: z
+				.number()
+				.int()
+				.min(1)
+				.max(64)
+				.describe("Number of future steps."),
+			interval: z.enum([
+				"step",
+				"minute",
+				"hour",
+				"day",
+				"week",
+				"month",
+				"quarter",
+				"year",
+			]),
+			step: z
+				.union([z.number().positive(), z.enum(["month", "year"])])
+				.optional(),
 			scale,
 			unit,
 		})

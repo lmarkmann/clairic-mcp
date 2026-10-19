@@ -78,7 +78,9 @@ function toClairicError(error: unknown): ClairicError {
 	return new ClairicError(reason, code === rejectedCode);
 }
 
-export async function runClairic(request: ClairicRequest): Promise<ClairicResponse> {
+export async function runClairic(
+	request: ClairicRequest,
+): Promise<ClairicResponse> {
 	const inputs = { model: "clairic", ...request };
 	for (let attempt = 1; ; attempt++) {
 		let response: unknown;

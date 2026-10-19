@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/oxfmt/configuration_schema.json",
 	"useTabs": true,
-	"printWidth": 100,
+	"printWidth": 80,
 	"sortPackageJson": true,
 	"sortImports": {
 		"groups": [
@@ -12,6 +12,13 @@
 		],
 		"newlinesBetween": true
 	},
-	"overrides": [{ "files": ["**/*.jsonc"], "options": { "trailingComma": "none" } }],
-	"ignorePatterns": ["worker-configuration.d.ts", "test/fixtures/**", "prek.toml", "**/*.md"]
+	"overrides": [
+		{ "files": ["**/*.jsonc"], "options": { "trailingComma": "none" } }
+	],
+	"ignorePatterns": [
+		"worker-configuration.d.ts",
+		"test/fixtures/**",
+		"prek.toml",
+		"**/*.md"
+	]
 }

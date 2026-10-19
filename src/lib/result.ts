@@ -16,11 +16,13 @@ export function describeUpstreamError(error: UpstreamError): string {
 	const wait = error.retryAfterMs
 		? ` It asks clients to wait ${Math.ceil(error.retryAfterMs / 1000)} seconds.`
 		: "";
-	if (error.status === 404) return `${error.url} returned 404; check the address.`;
+	if (error.status === 404)
+		return `${error.url} returned 404; check the address.`;
 	if (error.status === 401 || error.status === 403) {
 		return `${error.url} needs a login or blocks scripts (HTTP ${error.status}). Ask the user to paste the text, or send a screenshot's public URL in image_urls.`;
 	}
-	if (error.status === 429) return `${error.url} is rate limiting this server (${tries}).${wait}`;
+	if (error.status === 429)
+		return `${error.url} is rate limiting this server (${tries}).${wait}`;
 	if (error.status === 0) {
 		return `${error.url} did not answer after ${tries}. Tell the user and offer to try again later.`;
 	}
@@ -37,13 +39,17 @@ export function describeClairicError(error: ClairicError): string {
 	return `Clairic failed: ${error.message}. Tell the user and offer to try again later.`;
 }
 
-export async function runTool(work: () => Promise<string>): Promise<CallToolResult> {
+export async function runTool(
+	work: () => Promise<string>,
+): Promise<CallToolResult> {
 	try {
 		return { content: [{ type: "text", text: await work() }] };
 	} catch (error) {
 		if (error instanceof ToolInputError) return failure(error.message);
-		if (error instanceof UpstreamError) return failure(describeUpstreamError(error));
-		if (error instanceof ClairicError) return failure(describeClairicError(error));
+		if (error instanceof UpstreamError)
+			return failure(describeUpstreamError(error));
+		if (error instanceof ClairicError)
+			return failure(describeClairicError(error));
 		throw error;
 	}
 }

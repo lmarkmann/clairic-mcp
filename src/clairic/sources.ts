@@ -38,22 +38,28 @@ const entityCodes: Record<string, number> = {
 };
 
 function decodeEntities(text: string): string {
-	return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, name: string) => {
-		const code =
-			name[0] !== "#"
-				? entityCodes[name.toLowerCase()]
-				: name[1] === "x" || name[1] === "X"
-					? parseInt(name.slice(2), 16)
-					: Number(name.slice(1));
-		return code && code <= 0x10ffff ? String.fromCodePoint(code) : match;
-	});
+	return text.replace(
+		/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,
+		(match, name: string) => {
+			const code =
+				name[0] !== "#"
+					? entityCodes[name.toLowerCase()]
+					: name[1] === "x" || name[1] === "X"
+						? parseInt(name.slice(2), 16)
+						: Number(name.slice(1));
+			return code && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+		},
+	);
 }
 
 // Block-level closing tags become line breaks so line numbers in answers still mean something.
 export function htmlToText(html: string): string {
 	return decodeEntities(
 		html
-			.replace(/<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1\s*>/gi, " ")
+			.replace(
+				/<(script|style|noscript|template|svg)\b[\s\S]*?<\/\1\s*>/gi,
+				" ",
+			)
 			.replace(/<!--[\s\S]*?-->/g, " ")
 			.replace(
 				/<(br|hr)\b[^>]*>|<\/(title|p|div|li|tr|h[1-6]|table|section|article|header|footer)\s*>/gi,
@@ -71,7 +77,9 @@ const textTypes = /^(text\/|application\/(json|xml|[\w.+-]+\+(json|xml))$)/;
 
 // Pages that are not UTF-8 name their charset in the header; a label the runtime lacks falls back to UTF-8.
 function decoderFor(contentTypeHeader: string): TextDecoder {
-	const charset = /;\s*charset\s*=\s*"?([^";\s]+)/i.exec(contentTypeHeader)?.[1];
+	const charset = /;\s*charset\s*=\s*"?([^";\s]+)/i.exec(
+		contentTypeHeader,
+	)?.[1];
 	try {
 		return new TextDecoder(charset);
 	} catch {
@@ -83,7 +91,8 @@ export async function loadText(url: string): Promise<string> {
 	const response = await fetchSource(url);
 	const header = response.headers.get("content-type") ?? "";
 	const contentType = header.split(";")[0]!.trim().toLowerCase();
-	const html = contentType === "text/html" || contentType === "application/xhtml+xml";
+	const html =
+		contentType === "text/html" || contentType === "application/xhtml+xml";
 	if (html || textTypes.test(contentType) || contentType === "") {
 		const bytes = await readCapped(response, url, maxTextBytes);
 		if (!bytes) {
@@ -96,7 +105,9 @@ export async function loadText(url: string): Promise<string> {
 	}
 	await response.body?.cancel();
 	if (/^image\/(png|jpeg|webp)$/.test(contentType)) {
-		throw new ToolInputError(`${url} is an image; pass it in image_urls instead of url.`);
+		throw new ToolInputError(
+			`${url} is an image; pass it in image_urls instead of url.`,
+		);
 	}
 	if (contentType === "application/pdf") {
 		throw new ToolInputError(
@@ -110,9 +121,11 @@ export async function loadText(url: string): Promise<string> {
 
 // The bytes decide the type: hosts often serve images as application/octet-stream.
 export function imageType(bytes: Uint8Array): string | undefined {
-	const ascii = (start: number, end: number) => String.fromCharCode(...bytes.subarray(start, end));
+	const ascii = (start: number, end: number) =>
+		String.fromCharCode(...bytes.subarray(start, end));
 	if (bytes[0] === 0x89 && ascii(1, 4) === "PNG") return "image/png";
-	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+		return "image/jpeg";
 	if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
 	return undefined;
 }
@@ -126,10 +139,16 @@ export function base64(bytes: Uint8Array): string {
 }
 
 // Encoding waits until the images' total size has been checked against Clairic's limit.
-export async function loadImage(url: string): Promise<{ contentType: string; bytes: Uint8Array }> {
+export async function loadImage(
+	url: string,
+): Promise<{ contentType: string; bytes: Uint8Array }> {
 	const bytes = await readCapped(await fetchSource(url), url, maxImageBytes);
-	if (!bytes) throw new ToolInputError(`${url} is larger than 4 MiB, Clairic's limit per image.`);
+	if (!bytes)
+		throw new ToolInputError(
+			`${url} is larger than 4 MiB, Clairic's limit per image.`,
+		);
 	const contentType = imageType(bytes);
-	if (!contentType) throw new ToolInputError(`${url} is not a PNG, JPEG or WebP image.`);
+	if (!contentType)
+		throw new ToolInputError(`${url} is not a PNG, JPEG or WebP image.`);
 	return { contentType, bytes };
 }

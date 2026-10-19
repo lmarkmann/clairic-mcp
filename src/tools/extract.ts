@@ -5,7 +5,12 @@ import * as z from "zod";
 import { type ClairicImage, runClairic } from "../clairic/client";
 import { fieldSpecs, isoDate } from "../clairic/fields";
 import { renderAnswers } from "../clairic/render";
-import { base64, loadImage, loadText, maxImagesBytes } from "../clairic/sources";
+import {
+	base64,
+	loadImage,
+	loadText,
+	maxImagesBytes,
+} from "../clairic/sources";
 import { runTool, ToolInputError } from "../lib/result";
 
 // About 100k tokens, past Clairic's 65,536-token window; it truncates the rest and says so.
@@ -24,7 +29,10 @@ Use it when the answer is a value: something to read (an order number, a deadlin
 
 Arithmetic over many steps or many table rows is unreliable: extract the inputs as separate fields and do the maths yourself. Answers marked [check] are uncertain; tell the user to verify them instead of stating them as fact. A null means the input does not determine the value; the best guess shown next to it is not an answer.`,
 			inputSchema: z.object({
-				text: z.string().optional().describe("The text to read. Exclusive with url."),
+				text: z
+					.string()
+					.optional()
+					.describe("The text to read. Exclusive with url."),
 				url: webUrl
 					.optional()
 					.describe(
@@ -52,25 +60,42 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 					.int()
 					.min(0)
 					.default(0)
-					.describe("url only: character offset into the page text, for pages Clairic truncated."),
+					.describe(
+						"url only: character offset into the page text, for pages Clairic truncated.",
+					),
 			}),
 			annotations: { readOnlyHint: true, openWorldHint: true },
 		},
-		({ text, url, image_urls, fields, reference_date, include_quantiles, offset }) =>
+		({
+			text,
+			url,
+			image_urls,
+			fields,
+			reference_date,
+			include_quantiles,
+			offset,
+		}) =>
 			runTool(async () => {
 				if (text !== undefined && url)
 					throw new ToolInputError("Send either text or url, not both.");
 				if (!text && !url && !image_urls?.length) {
-					throw new ToolInputError("Send the input as text, url or image_urls.");
+					throw new ToolInputError(
+						"Send the input as text, url or image_urls.",
+					);
 				}
-				if (offset && !url) throw new ToolInputError("offset applies to url only.");
-				if (!Object.keys(fields).length) throw new ToolInputError("Define at least one field.");
+				if (offset && !url)
+					throw new ToolInputError("offset applies to url only.");
+				if (!Object.keys(fields).length)
+					throw new ToolInputError("Define at least one field.");
 
 				const [page, loaded] = await Promise.all([
 					url ? loadText(url) : undefined,
 					Promise.all((image_urls ?? []).map(loadImage)),
 				]);
-				const totalBytes = loaded.reduce((sum, { bytes }) => sum + bytes.length, 0);
+				const totalBytes = loaded.reduce(
+					(sum, { bytes }) => sum + bytes.length,
+					0,
+				);
 				if (totalBytes > maxImagesBytes) {
 					throw new ToolInputError(
 						`The images total ${(totalBytes / 2 ** 20).toFixed(1)} MiB; Clairic takes 8 MiB at most. Send fewer.`,
@@ -82,8 +107,10 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 				}));
 				const input = page ?? text ?? "";
 				const state = input.slice(offset, offset + maxStateCharacters);
-				if (url && !state) throw new ToolInputError(`${url} has no text at offset ${offset}.`);
-				const referenceDate = reference_date ?? new Date().toISOString().slice(0, 10);
+				if (url && !state)
+					throw new ToolInputError(`${url} has no text at offset ${offset}.`);
+				const referenceDate =
+					reference_date ?? new Date().toISOString().slice(0, 10);
 
 				const response = await runClairic({
 					state,
@@ -100,7 +127,11 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 					!response.truncated && end < input.length
 						? `\nOnly characters ${offset} to ${end} of ${input.length} were sent. ${url ? `Call again with offset ${end} for the rest.` : "Send the rest of the text in another call."}`
 						: "";
-				return source + renderAnswers(response, { state, fields, referenceDate }) + cut;
+				return (
+					source +
+					renderAnswers(response, { state, fields, referenceDate }) +
+					cut
+				);
 			}),
 	);
 }

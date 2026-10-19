@@ -6,7 +6,10 @@ export const invoiceState =
 
 export const invoiceFields: Record<string, FieldSpec> = {
 	invoice_number: { type: "text" },
-	due_date: { type: "date", instructions: "Issue date plus the net payment days" },
+	due_date: {
+		type: "date",
+		instructions: "Issue date plus the net payment days",
+	},
 	total: {
 		type: "number",
 		decimals: 2,
@@ -22,5 +25,10 @@ export const invoiceFields: Record<string, FieldSpec> = {
 		step: 1,
 		instructions: "Days after issue until this invoice is paid",
 	},
-	payment_term: { type: "duration", unit: "days", integer: true, instructions: "Net payment term" },
+	payment_term: {
+		type: "duration",
+		unit: "days",
+		integer: true,
+		instructions: "Net payment term",
+	},
 };

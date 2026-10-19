@@ -2,7 +2,11 @@
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
 	"plugins": ["unicorn", "oxc", "typescript", "vitest", "import", "promise"],
 	"options": { "typeAware": true, "reportUnusedDisableDirectives": "warn" },
-	"categories": { "correctness": "error", "suspicious": "error", "perf": "warn" },
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"perf": "warn"
+	},
 	"rules": {
 		"eqeqeq": "error",
 		"unicorn/filename-case": ["error", { "case": "kebabCase" }],
