@@ -13,10 +13,5 @@
 		"newlinesBetween": true
 	},
 	"overrides": [{ "files": ["**/*.jsonc"], "options": { "trailingComma": "none" } }],
-	"ignorePatterns": [
-		"worker-configuration.d.ts",
-		"test/fixtures/**",
-		"prek.toml",
-		"**/*.md"
-	]
+	"ignorePatterns": ["worker-configuration.d.ts", "test/fixtures/**", "prek.toml", "**/*.md"]
 }
