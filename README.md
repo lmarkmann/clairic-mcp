@@ -85,9 +85,3 @@ The due date and the total are computed, not copied. The invoice has no purchase
 | `list` | Every match, as text, numbers or dates |
 | `estimate` | A median and an 80% interval between the `min` and `max` you set |
 | `forecast` | One estimate per step ahead, from a series in the input |
-
-## Limits
-
-Clairic is in preview. Per Cloudflare's [release notes](https://developers.cloudflare.com/changelog/post/2026-10-19-clairic-workers-ai/), one- and two-step arithmetic is reliable, while long chains and sums over many table rows are not, and forecasts flatten toward the average after the first step.
-
-Clairic reads at most 65,536 tokens; when an input is longer the answer says so, and for a page you can call again with `offset`. The server refuses PDFs, pages over 8 MiB and anything behind a login. Images can be PNG, JPEG or WebP: up to four, 4 MiB each and 8 MiB together.
