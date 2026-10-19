@@ -5,7 +5,7 @@ import * as z from "zod";
 import { type ClairicImage, runClairic } from "../clairic/client";
 import { fieldSpecs, isoDate } from "../clairic/fields";
 import { renderAnswers } from "../clairic/render";
-import { loadImage, loadText, maxImagesBytes } from "../clairic/sources";
+import { base64, loadImage, loadText, maxImagesBytes } from "../clairic/sources";
 import { runTool, ToolInputError } from "../lib/result";
 
 // About 100k tokens, past Clairic's 65,536-token window; it truncates the rest and says so.
@@ -70,13 +70,16 @@ Arithmetic over many steps or many table rows is unreliable: extract the inputs 
 					url ? loadText(url) : undefined,
 					Promise.all((image_urls ?? []).map(loadImage)),
 				]);
-				const totalBytes = loaded.reduce((sum, { bytes }) => sum + bytes, 0);
+				const totalBytes = loaded.reduce((sum, { bytes }) => sum + bytes.length, 0);
 				if (totalBytes > maxImagesBytes) {
 					throw new ToolInputError(
 						`The images total ${(totalBytes / 2 ** 20).toFixed(1)} MiB; Clairic takes 8 MiB at most. Send fewer.`,
 					);
 				}
-				const images: ClairicImage[] = loaded.map(({ image }) => image);
+				const images: ClairicImage[] = loaded.map(({ contentType, bytes }) => ({
+					content_type: contentType,
+					base64: base64(bytes),
+				}));
 				const input = page ?? text ?? "";
 				const state = input.slice(offset, offset + maxStateCharacters);
 				if (url && !state) throw new ToolInputError(`${url} has no text at offset ${offset}.`);

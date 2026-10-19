@@ -73,10 +73,13 @@ test("recognises images by their bytes, whatever the server calls them", async (
 	expect(imageType(png)).toBe("image/png");
 	expect(imageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe("image/jpeg");
 	expect(imageType(new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 "))).toBe("image/webp");
-	served = new Response(png, { headers: { "content-type": "application/octet-stream" } });
-	const { image, bytes } = await loadImage("https://example.com/receipt");
-	expect(image).toEqual({ content_type: "image/png", base64: btoa(String.fromCharCode(...png)) });
-	expect(bytes).toBe(png.length);
+	served = new Response(png, {
+		headers: { "content-type": "application/octet-stream" },
+	});
+	expect(await loadImage("https://example.com/receipt")).toEqual({
+		contentType: "image/png",
+		bytes: png,
+	});
 });
 
 test("refuses files that are not images and images over 4 MiB", async () => {
@@ -86,7 +89,9 @@ test("refuses files that are not images and images over 4 MiB", async () => {
 	big.set(png);
 	served = new Response(big);
 	await expect(loadImage("https://example.com/big.png")).rejects.toThrow(/larger than 4 MiB/);
-	served = new Response(png, { headers: { "content-length": String(maxImageBytes + 1) } });
+	served = new Response(png, {
+		headers: { "content-length": String(maxImageBytes + 1) },
+	});
 	await expect(loadImage("https://example.com/big.png")).rejects.toThrow(/larger than 4 MiB/);
 });
 

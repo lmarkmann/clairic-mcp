@@ -65,29 +65,56 @@ test("extracts from text and sends Clairic the request it documents", async () =
 	expect(isError).toBeUndefined();
 	expect(text).toContain("total: 1080 USD");
 	expect(sent).toEqual([
-		{ model: "clairic", state: invoiceState, fields: invoiceFields, reference_date: "2026-10-19" },
+		{
+			model: "clairic",
+			state: invoiceState,
+			fields: invoiceFields,
+			reference_date: "2026-10-19",
+		},
 	]);
 });
 
 test("reads a page as text with its block structure", async () => {
-	const { text } = await callTool({ url: "https://example.com/invoice", fields: invoiceFields });
+	const { text } = await callTool({
+		url: "https://example.com/invoice",
+		fields: invoiceFields,
+	});
 	expect(sent[0]?.state).toBe(invoiceState);
 	expect(sent[0]?.reference_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	expect(text).toMatch(/^Read https:\/\/example\.com\/invoice \(\d+ of \d+ characters\)/);
 });
 
 test("says when the input was cut before Clairic saw it", async () => {
-	const { text } = await callTool({ text: "x".repeat(400_005), fields: invoiceFields });
+	const { text } = await callTool({
+		text: "x".repeat(400_005),
+		fields: invoiceFields,
+	});
 	expect(sent[0]?.state).toHaveLength(400_000);
 	expect(text).toContain("Only characters 0 to 400000 of 400005 were sent.");
 });
 
 test("embeds image URLs as base64 because Clairic refuses remote URLs", async () => {
-	await callTool({ image_urls: ["https://example.com/receipt.png"], fields: invoiceFields });
+	await callTool({
+		image_urls: ["https://example.com/receipt.png"],
+		fields: invoiceFields,
+	});
 	expect(sent[0]?.images).toEqual([
 		{ content_type: "image/png", base64: btoa(String.fromCharCode(...png)) },
 	]);
 	expect(sent[0]?.state).toBe("");
+});
+
+test("refuses images over 8 MiB together before sending any", async () => {
+	const large = new Uint8Array(3 * 2 ** 20);
+	large.set(png);
+	vi.stubGlobal("fetch", () => Promise.resolve(new Response(large)));
+	const { isError, text } = await callTool({
+		image_urls: ["a", "b", "c"].map((name) => `https://example.com/${name}.png`),
+		fields: invoiceFields,
+	});
+	expect(isError).toBe(true);
+	expect(text).toContain("The images total 9.0 MiB");
+	expect(sent).toEqual([]);
 });
 
 test.each([
@@ -126,7 +153,10 @@ test("retries an unexplained Workers AI failure once", async () => {
 			? Promise.reject(new Error("3040: Capacity temporarily exceeded"))
 			: Promise.resolve(invoice);
 	});
-	const { isError } = await callTool({ text: invoiceState, fields: invoiceFields });
+	const { isError } = await callTool({
+		text: invoiceState,
+		fields: invoiceFields,
+	});
 	expect(isError).toBeUndefined();
 	expect(calls).toBe(2);
 });

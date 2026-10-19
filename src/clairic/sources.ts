@@ -1,5 +1,3 @@
-import type { ClairicImage } from "./client";
-
 import { fetchSource, readCapped } from "../lib/http";
 import { ToolInputError } from "../lib/result";
 
@@ -119,7 +117,7 @@ export function imageType(bytes: Uint8Array): string | undefined {
 	return undefined;
 }
 
-function base64(bytes: Uint8Array): string {
+export function base64(bytes: Uint8Array): string {
 	let binary = "";
 	for (let start = 0; start < bytes.length; start += 0x8000) {
 		binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
@@ -127,10 +125,11 @@ function base64(bytes: Uint8Array): string {
 	return btoa(binary);
 }
 
-export async function loadImage(url: string): Promise<{ image: ClairicImage; bytes: number }> {
+// Encoding waits until the images' total size has been checked against Clairic's limit.
+export async function loadImage(url: string): Promise<{ contentType: string; bytes: Uint8Array }> {
 	const bytes = await readCapped(await fetchSource(url), url, maxImageBytes);
 	if (!bytes) throw new ToolInputError(`${url} is larger than 4 MiB, Clairic's limit per image.`);
 	const contentType = imageType(bytes);
 	if (!contentType) throw new ToolInputError(`${url} is not a PNG, JPEG or WebP image.`);
-	return { image: { content_type: contentType, base64: base64(bytes) }, bytes: bytes.length };
+	return { contentType, bytes };
 }
