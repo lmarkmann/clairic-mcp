@@ -1,6 +1,13 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-import { htmlToText, imageType, loadImage, loadText, maxImageBytes } from "../src/clairic/sources";
+import {
+	htmlToText,
+	imageType,
+	loadImage,
+	loadText,
+	maxImageBytes,
+	maxTextBytes,
+} from "../src/clairic/sources";
 
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 
@@ -49,5 +56,14 @@ test("refuses files that are not images and images over 4 MiB", async () => {
 	const big = new Uint8Array(maxImageBytes + 1);
 	big.set(png);
 	served = new Response(big);
-	await expect(loadImage("https://example.com/big.png")).rejects.toThrow(/up to 4 MiB/);
+	await expect(loadImage("https://example.com/big.png")).rejects.toThrow(/larger than 4 MiB/);
+	served = new Response(png, { headers: { "content-length": String(maxImageBytes + 1) } });
+	await expect(loadImage("https://example.com/big.png")).rejects.toThrow(/larger than 4 MiB/);
+});
+
+test("refuses text larger than the cap without reading it whole", async () => {
+	served = new Response(new Uint8Array(maxTextBytes + 1), {
+		headers: { "content-type": "text/plain" },
+	});
+	await expect(loadText("https://example.com/huge.txt")).rejects.toThrow(/larger than 8 MiB/);
 });

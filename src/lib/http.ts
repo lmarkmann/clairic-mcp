@@ -40,6 +40,36 @@ export function serverWaitMs(headers: Headers, now: number): number | undefined 
 	return reset ? Math.max(0, reset * 1000 - now) : undefined;
 }
 
+// Reads at most maxBytes, so a huge file cannot exhaust the isolate's memory; undefined when larger.
+export async function readCapped(
+	response: Response,
+	maxBytes: number,
+): Promise<Uint8Array | undefined> {
+	if (Number(response.headers.get("content-length")) > maxBytes) {
+		await response.body?.cancel();
+		return undefined;
+	}
+	const reader = response.body?.getReader();
+	if (!reader) return new Uint8Array();
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+		total += chunk.value.length;
+		if (total > maxBytes) {
+			await reader.cancel();
+			return undefined;
+		}
+		chunks.push(chunk.value);
+	}
+	const bytes = new Uint8Array(total);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.length;
+	}
+	return bytes;
+}
+
 // Returns the response unread, so the caller decides between text and bytes.
 export async function fetchSource(url: string): Promise<Response> {
 	const deadline = Date.now() + budgetMs;

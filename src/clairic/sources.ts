@@ -1,10 +1,12 @@
 import type { ClairicImage } from "./client";
 
-import { fetchSource } from "../lib/http";
+import { fetchSource, readCapped } from "../lib/http";
 import { ToolInputError } from "../lib/result";
 
 export const maxImageBytes = 4 * 1024 * 1024;
 export const maxImagesBytes = 8 * 1024 * 1024;
+// Pages carry markup on top of the 400,000 characters Clairic is sent; anything larger is refused unread.
+export const maxTextBytes = 8 * 1024 * 1024;
 
 const entities: Record<string, string> = {
 	amp: "&",
@@ -54,10 +56,17 @@ export async function loadText(url: string): Promise<string> {
 		.split(";")[0]!
 		.trim()
 		.toLowerCase();
-	if (contentType === "text/html" || contentType === "application/xhtml+xml") {
-		return htmlToText(await response.text());
+	const html = contentType === "text/html" || contentType === "application/xhtml+xml";
+	if (html || textTypes.test(contentType) || contentType === "") {
+		const bytes = await readCapped(response, maxTextBytes);
+		if (!bytes) {
+			throw new ToolInputError(
+				`${url} is larger than ${maxTextBytes / 2 ** 20} MiB. Ask the user for the relevant part as text.`,
+			);
+		}
+		const text = new TextDecoder().decode(bytes);
+		return html ? htmlToText(text) : text;
 	}
-	if (textTypes.test(contentType) || contentType === "") return response.text();
 	await response.body?.cancel();
 	if (contentType.startsWith("image/")) {
 		throw new ToolInputError(`${url} is an image; pass it in image_urls instead of url.`);
@@ -90,13 +99,9 @@ function base64(bytes: Uint8Array): string {
 }
 
 export async function loadImage(url: string): Promise<{ image: ClairicImage; bytes: number }> {
-	const bytes = new Uint8Array(await (await fetchSource(url)).arrayBuffer());
+	const bytes = await readCapped(await fetchSource(url), maxImageBytes);
+	if (!bytes) throw new ToolInputError(`${url} is larger than 4 MiB, Clairic's limit per image.`);
 	const contentType = imageType(bytes);
 	if (!contentType) throw new ToolInputError(`${url} is not a PNG, JPEG or WebP image.`);
-	if (bytes.length > maxImageBytes) {
-		throw new ToolInputError(
-			`${url} is ${(bytes.length / 2 ** 20).toFixed(1)} MiB; Clairic takes images up to 4 MiB.`,
-		);
-	}
 	return { image: { content_type: contentType, base64: base64(bytes) }, bytes: bytes.length };
 }
