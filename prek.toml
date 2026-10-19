@@ -1,0 +1,27 @@
+#:schema https://www.schemastore.org/prek.json
+minimum_prek_version = "0.4.11"
+
+[priorities]
+safety = 0
+format = 10
+lint = 20
+types = 30
+tests = 40
+
+[[repos]]
+repo = "builtin"
+hooks = [
+	{ id = "check-merge-conflict", priority = "safety" },
+	{ id = "detect-private-key", priority = "safety" },
+	{ id = "check-added-large-files", priority = "safety" },
+	{ id = "check-yaml", priority = "safety", args = ["--allow-multiple-documents"] },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+	{ id = "oxfmt", name = "oxfmt", entry = "pnpm exec oxfmt --no-error-on-unmatched-pattern", language = "system", priority = "format", types_or = ["ts", "json", "jsonc", "yaml"] },
+	{ id = "oxlint", name = "oxlint", entry = "pnpm exec oxlint", language = "system", pass_filenames = false, priority = "lint", types_or = ["ts"] },
+	{ id = "tsc", name = "tsc", entry = "pnpm exec tsc --noEmit -p .", language = "system", pass_filenames = false, priority = "types", types_or = ["ts"] },
+	{ id = "vitest", name = "vitest", entry = "pnpm exec vitest run", language = "system", pass_filenames = false, priority = "tests", types_or = ["ts", "json", "plain-text"] },
+]

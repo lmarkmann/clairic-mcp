@@ -1,0 +1,58 @@
+# Pending changesets open a version PR that merges itself once CI passes; the merge
+# tags the release. The App token is what lets those events trigger CI and this
+# workflow again, which GITHUB_TOKEN events do not.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  release:
+    # Copies without a release App of their own skip releasing.
+    if: vars.RELEASE_APP_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: harden runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+      - name: token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # changeset version reads history to date each changeset; a shallow clone would refetch without credentials.
+          fetch-depth: 0
+      - name: pnpm
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          cache: false
+          require-lockfile: true
+      - name: changesets
+        id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          github-token: ${{ steps.app.outputs.token }}
+          version-script: pnpm run release:version
+          publish-script: pnpm changeset git-tag
+          pr-title: "chore: release"
+          commit-message: "chore: release"
+      - name: automerge
+        if: steps.changesets.outputs.pr-number != ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PR: ${{ steps.changesets.outputs.pr-number }}
+        run: gh pr merge --auto --squash "$PR"

@@ -1,0 +1,24 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"useTabs": true,
+	"printWidth": 80,
+	"sortPackageJson": true,
+	"sortImports": {
+		"groups": [
+			["type"],
+			["builtin", "external"],
+			["internal", "subpath"],
+			["parent", "sibling", "index"]
+		],
+		"newlinesBetween": true
+	},
+	"overrides": [
+		{ "files": ["**/*.jsonc"], "options": { "trailingComma": "none" } }
+	],
+	"ignorePatterns": [
+		"worker-configuration.d.ts",
+		"test/fixtures/**",
+		"prek.toml",
+		"**/*.md"
+	]
+}
